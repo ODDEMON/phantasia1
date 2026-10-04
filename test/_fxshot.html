@@ -1,0 +1,58 @@
+<!doctype html>
+<!-- 取景页：一行参数看一处景、一种演出。只用于调试，不进正文。
+     用法：_fxshot.html?w=alias&m=rain&b=5&fx=kaleido
+       w  = 量程（十八个之一）      m = 母题（二十七个之一）
+       b  = 位深 1..8              fx = 演出名（不写就是干净的一帧）
+     演出会被冻结在中段（animation-delay 取负 + paused），好让我看清它长什么样。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>里视界 · 取景</title>
+<link rel="stylesheet" href="../style.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; }
+  #scene { position: absolute; inset: 0; }
+  /* 冻结在动画中段 */
+  .frozen, .frozen * { animation-play-state: paused !important; animation-delay: -.55s !important; }
+  #tip {
+    position: absolute; left: 12px; top: 10px; z-index: 99;
+    font: 12px/1.6 "Microsoft YaHei", sans-serif; color: #fff;
+    background: rgba(0,0,0,.55); padding: 6px 10px; letter-spacing: .06em;
+  }
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<div id="tip"></div>
+
+<script src="../core/util.js"></script>
+<script src="../core/palette.js"></script>
+<script src="../core/cue.js"></script>
+<script src="../core/field.js"></script>
+<script src="../core/lexicon.js"></script>
+<script src="../core/bus.js"></script>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var w = q.get('w') || 'interval';
+  var m = q.get('m') || 'verge';
+  var b = parseInt(q.get('b') || '8', 10);
+  var fx = q.get('fx') || '';
+  var UA = window.UA;
+
+  UA.palette.set(w);
+  UA.field.mount(document.getElementById('scene'));
+  UA.field.setMotif(m, 0);
+  UA.field.setBits(b);
+  UA.field.moveTo(0.42 * innerWidth, 0.46 * innerHeight);
+
+  if (fx) {
+    document.getElementById('scene').classList.add('fx-' + fx);
+    document.getElementById('scene').classList.add('frozen');
+  }
+  document.getElementById('tip').textContent =
+    '量程 ' + w + ' · 母题 ' + m + ' · 位深 ' + b + ' · 演出 ' + (fx || '（无）');
+})();
+</script>
+</body>
+</html>
