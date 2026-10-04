@@ -1007,3 +1007,36 @@ body.calm #scene.fx-void,
 body.calm #scene.fx-noise,
 body.calm #scene.fx-glow { animation: none !important; filter: none !important; transform: none !important; }
 body.calm .ly-fx i { animation: none !important; opacity: 0 !important; }
+
+/* ---- 语言选择 ---- */
+.frame-right { display: flex; align-items: center; gap: 10px; pointer-events: auto; }
+.langsel { display: flex; gap: 4px; }
+.langsel button {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em;
+  color: var(--dim); background: transparent;
+  border: 1px solid color-mix(in srgb, var(--dim) 50%, transparent);
+  height: 34px; padding: 0 11px; border-radius: 17px; cursor: pointer;
+  transition: color .3s, border-color .3s, box-shadow .3s;
+}
+.langsel button:hover { color: var(--acc); border-color: var(--acc); }
+.langsel button.on {
+  color: var(--fg); border-color: var(--acc);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--acc) 38%, transparent);
+}
+/* 封面里的语言行 */
+.langrow { display: flex; gap: 8px; justify-content: center; margin: 16px 0 2px; }
+.langrow .lbtn {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .12em;
+  color: var(--dim); background: transparent;
+  border: 1px solid color-mix(in srgb, var(--dim) 50%, transparent);
+  padding: 7px 16px; border-radius: 999px; cursor: pointer;
+  transition: color .3s, border-color .3s, box-shadow .3s;
+}
+.langrow .lbtn:hover { color: var(--acc); border-color: var(--acc); }
+.langrow .lbtn.on {
+  color: var(--fg); border-color: var(--acc);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--acc) 38%, transparent);
+}
+/* 非中文：正文换上更贴的衬线，避免拉丁/西里尔被强行塞进中文栈 */
+html:lang(en) #now .ln, html:lang(ru) #now .ln { font-family: Georgia, "Times New Roman", "Noto Serif", serif; }
+html:lang(ja) #now .ln { font-family: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "Noto Serif JP", serif; }

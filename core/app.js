@@ -7,6 +7,9 @@ window.UA = window.UA || {};
   'use strict';
 
   var L = UA.lex.t;
+  var I = UA.i18n;
+  var LANGS = UA.i18n.LANGS;
+  var LANGNAME = UA.i18n.NAMES;
   var GLITCH_CH = '々〆〤〻ゞ゠ゝゑゐゔ☆◆◇■□▲△▼▽※→←↑↓∴≡≪≫⊙⊿█▓▒░';
 
   /* 无头测试用：把所有等待压到最短，内容一个字都一样 */
@@ -21,6 +24,8 @@ window.UA = window.UA || {};
   var typer = null, typed = '', typeEl = null, glitchAmt = 0, curTilt = .3;
   var lastKey = false;   /* 上一句是不是关键句。关键句不连着来。 */
   var idleBeat = 0, modalOpen = false;
+  var curSp = '';        /* 当前句说话人，切语言时重画印记用 */
+  var curZh = '';        /* 当前句中文原文，切语言时按新语言重新取译文用 */
 
   function $(id) { return document.getElementById(id); }
   function esc(s) {
@@ -37,27 +42,77 @@ window.UA = window.UA || {};
   function bell(k) { UA.audio.bell(k, calm()); }
 
   /* ---- 光敏提示：推门之前，先把这一片会怎么亮讲清楚 ---- */
-  var WARN_TEXT = [
-    '这一段重建会亮出下面这几样。它们是这一段的模样，并非装饰：',
-    '· 单次的全屏过冲——一下，很快，过后不重复',
-    '· 横向错位的细带——缓慢滑动',
-    '· 红蓝分岔的色散边——出现在高反差处',
-    '· 一次全屏的明暗翻转',
-    '· 大面积的渐变、光晕与缓慢移动的几何，整屏铺开'
-  ];
-  var WARN_TAIL = [
-    '倘若看官对闪烁光敏感，抑或有过光敏性癫痫、偏头痛、眩晕的旧账，请先按「收掉闪烁」。',
-    '「收掉闪烁」会收掉过冲、色散、撕裂、抖动与翻转，只留缓慢的色与形。',
-    '它是一枚永久开关，随时能关。内容一颗字都不会因它而改。'
-  ];
+  var WARN = {
+    zh: {
+      text: [
+        '这一段重建会亮出下面这几样。它们是这一段的模样，并非装饰：',
+        '· 单次的全屏过冲——一下，很快，过后不重复',
+        '· 横向错位的细带——缓慢滑动',
+        '· 红蓝分岔的色散边——出现在高反差处',
+        '· 一次全屏的明暗翻转',
+        '· 大面积的渐变、光晕与缓慢移动的几何，整屏铺开'
+      ],
+      tail: [
+        '倘若看官对闪烁光敏感，抑或有过光敏性癫痫、偏头痛、眩晕的旧账，请先按「收掉闪烁」。',
+        '「收掉闪烁」会收掉过冲、色散、撕裂、抖动与翻转，只留缓慢的色与形。',
+        '它是一枚永久开关，随时能关。内容一颗字都不会因它而改。'
+      ]
+    },
+    en: {
+      text: [
+        'The rebuild ahead will light up like this. These are the shape of the passage, not decoration:',
+        '· a single full-screen overshoot — one beat, quick, never repeated',
+        '· thin bands sliding sideways out of alignment — drifting slowly',
+        '· red-blue split color-fringe at the high-contrast edges',
+        '· one full-screen flip of light and dark',
+        '· broad gradients, glow, and slow geometry moving across the whole screen'
+      ],
+      tail: [
+        'If you are sensitive to flickering light, or have a history of photosensitive epilepsy, migraine, or vertigo, press “Still the flicker” first.',
+        '“Still the flicker” takes back the overshoot, the color-fringe, the tearing, the jitter, and the flip — leaving only the slow color and form.',
+        'It is a permanent switch, closable anytime. Not a single word of the story changes because of it.'
+      ]
+    },
+    ja: {
+      text: [
+        'この先の再建は、こう光る。これらはこの一节の姿であって、装飾ではない：',
+        '・画面いっぱいの一回のオーバーシュート――ひとつ、素早く、二度とは繰り返さない',
+        '・横にずれる細い帯――ゆっくりと滑る',
+        '・高コントラストの縁に現れる、赤と青に分かつ色の滲み',
+        '・画面いっぱいの明るさの反転、一度きり',
+        '・広い階調、光暈、そしてゆっくり動く幾何が、画面全体に広がる'
+      ],
+      tail: [
+        'ちらつく光に敏感な方、あるいは光感受性てんかん・偏頭痛・めまいの旧歴のある方は、まず「ちらつきを鎮める」を押してほしい。',
+        '「ちらつきを鎮める」はオーバーシュート・色の滲み・ちぎれ・震え・反転を鎮め、ゆっくりした色と形だけを残す。',
+        'それは永続するスイッチで、いつでも消せる。物語の文字が一つでもそれで変わることはない。'
+      ]
+    },
+    ru: {
+      text: [
+        'Впереди пересборка засветится вот так. Это облик прохода, а не украшение:',
+        '· однократный перехлёст на весь экран — один такт, быстро, не повторяется',
+        '· тонкие полосы, смещающиеся вбок — медленно скользят',
+        '· красно-синий цветовой расщеп по краям высокого контраста',
+        '· один переворот света и тьмы на весь экран',
+        '· широкие градации, свечение и медленная геометрия, расстилающаяся по всему экрану'
+      ],
+      tail: [
+        'Если ты чувствителен к мерцающему свету или есть в прошлом эпизоды светочувствительной эпилепсии, мигрени, головокружения — сначала нажми «Усмирить мерцание».',
+        '«Усмирить мерцание» забирает перехлёст, расщеп, разрыв, дрожь и переворот — оставляя лишь медленный цвет и форму.',
+        'Это постоянный переключатель, его можно выключить в любой момент. Ни один знак истории из-за него не изменится.'
+      ]
+    }
+  };
   function warning() {
+    var wn = WARN[I.lang] || WARN.zh;
     var st = $('stage');
     st.innerHTML =
       '<div class="warn">' +
       '<div class="wk">' + esc(L('warn.kicker')) + '</div>' +
       '<h2 class="wt">' + esc(L('warn.title')) + '</h2>' +
-      '<div class="wb">' + WARN_TEXT.map(function (x) { return '<p>' + esc(x) + '</p>'; }).join('') + '</div>' +
-      '<div class="wb dim">' + WARN_TAIL.map(function (x) { return '<p>' + esc(x) + '</p>'; }).join('') + '</div>' +
+      '<div class="wb">' + wn.text.map(function (x) { return '<p>' + esc(x) + '</p>'; }).join('') + '</div>' +
+      '<div class="wb dim">' + wn.tail.map(function (x) { return '<p>' + esc(x) + '</p>'; }).join('') + '</div>' +
       '<div class="wbtns">' +
       '<button class="gbtn" id="wCalm">' + esc(L('warn.calm')) + '</button>' +
       '<button class="gbtn ghost" id="wOk">' + esc(L('warn.ok')) + '</button>' +
@@ -89,10 +144,10 @@ window.UA = window.UA || {};
       UA.field.fx('ring', { amp: 0.5, reach: 1.7, dur: 2.4 });
       if ($('stage')) $('stage').setAttribute('data-part', p.id || '');
       c.innerHTML =
-        '<div class="pnum">' + esc(p.n || '') + '</div>' +
-        '<div class="ptitle">' + esc(p.t || '') + '</div>' +
-        '<div class="psub">' + esc(p.sub || '') + '</div>' +
-        '<div class="pmood">' + esc(p.mood || '') + '</div>' +
+        '<div class="pnum">' + esc(I.get(p.n || '')) + '</div>' +
+        '<div class="ptitle">' + esc(I.get(p.t || '')) + '</div>' +
+        '<div class="psub">' + esc(I.get(p.sub || '')) + '</div>' +
+        '<div class="pmood">' + esc(I.get(p.mood || '')) + '</div>' +
         '<span class="prule"></span>';
       c.classList.add('on', 'part');
       bell('end');
@@ -126,12 +181,12 @@ window.UA = window.UA || {};
       if (calm()) UA.field.fx('ring', { amp: 0.4, reach: 1.6, dur: 3.6 });
       if ($('stage')) $('stage').setAttribute('data-chapter', ch.id || '');
       c.innerHTML =
-        '<div class="cnums">' + esc(ch.n || '').split('').map(function (x) { return '<span>' + x + '</span>'; }).join('') + '</div>' +
+        '<div class="cnums">' + esc(I.get(ch.n || '')).split('').map(function (x) { return '<span>' + x + '</span>'; }).join('') + '</div>' +
         '<div class="cbody">' +
-        '<div class="ctitle">' + esc(ch.t || '') + '</div>' +
-        '<div class="csub">' + esc(ch.sub || '') + '</div>' +
-        '<div class="cmood">' + esc(ch.mood || '') + '</div>' +
-        (ch.tail ? '<div class="ctail">' + esc(ch.tail) + '</div>' : '') +
+        '<div class="ctitle">' + esc(I.get(ch.t || '')) + '</div>' +
+        '<div class="csub">' + esc(I.get(ch.sub || '')) + '</div>' +
+        '<div class="cmood">' + esc(I.get(ch.mood || '')) + '</div>' +
+        (ch.tail ? '<div class="ctail">' + esc(I.get(ch.tail)) + '</div>' : '') +
         '</div>' +
         '<span class="crule a"></span><span class="crule b"></span>';
       c.classList.add('on', 'chapter');
@@ -232,6 +287,9 @@ window.UA = window.UA || {};
       '<button class="sbtn" id="bLoad">' + esc(L('save.import')) + '</button>' +
       '<button class="sbtn" id="bWarn">' + esc(L('warn.kicker')) + '</button>' +
       '</div>' +
+      '<div class="langrow">' +
+      LANGS.map(function (l) { return '<button class="lbtn" data-l="' + l + '">' + LANGNAME[l] + '</button>'; }).join('') +
+      '</div>' +
       '<p class="cover-hint">' + esc(L('app.hint')) + '<br>' + esc(L('app.hint2')) + '<br>' + esc(L('app.hint3')) + '</p>' +
       '<div class="note">' +
       '<div class="nk">' + esc(L('note.kicker')) + '</div>' +
@@ -248,6 +306,9 @@ window.UA = window.UA || {};
     $('bDump').onclick = function (e) { e.stopPropagation(); exportSave(); };
     $('bLoad').onclick = function (e) { e.stopPropagation(); openImport(); };
     $('bWarn').onclick = function (e) { e.stopPropagation(); warning(); };
+    Array.prototype.forEach.call(st.querySelectorAll('.lbtn'), function (b) {
+      b.onclick = function (e) { e.stopPropagation(); I.setLang(b.getAttribute('data-l')); paintLang(); };
+    });
     bell('soft');
   }
 
@@ -322,7 +383,7 @@ window.UA = window.UA || {};
       var b = UA.field.bits;
       if (b !== UA.bus.state.bits) {
         UA.bus.state.bits = b; UA.bus.save(); paintDepth(); UA.audio.setDepth(b);
-        if (UA.field.idle > 6 && idleBeat++ % 3 === 0) whisper('不看它之际，它自行长回一点。');
+        if (UA.field.idle > 6 && idleBeat++ % 3 === 0) whisper(L('app.idle'));
       }
     }, 1200);
   }
@@ -346,6 +407,12 @@ window.UA = window.UA || {};
       if (!e.touches || !e.touches.length) return;
       move(e.touches[0].clientX, e.touches[0].clientY, false);
     }, { passive: true });
+
+    /* 常驻语言选择：顶部那一排永远在 */
+    var ls = document.getElementById('langsel');
+    if (ls) Array.prototype.forEach.call(ls.querySelectorAll('button'), function (b) {
+      b.addEventListener('click', function (e) { e.stopPropagation(); I.setLang(b.getAttribute('data-l')); paintLang(); });
+    });
   }
 
   /* 静只做两件事：把身体挂上记号（CSS 里那些动的东西就停了），
@@ -433,9 +500,34 @@ window.UA = window.UA || {};
   function whisper(txt) {
     var w = $('whisper');
     if (!w) return;
-    w.textContent = txt;
+    w.textContent = I.get(txt);
     w.classList.add('on');
     setTimeout(function () { w.classList.remove('on'); }, 4200);
+  }
+
+  /* 语言按钮的高亮态：封面里的 .lbtn 与常驻的 #langsel 一并更新 */
+  function paintLang() {
+    var l = I.lang;
+    Array.prototype.forEach.call(document.querySelectorAll('.lbtn, #langsel button'), function (b) {
+      b.classList.toggle('on', b.getAttribute('data-l') === l);
+    });
+  }
+
+  /* 切语言时即时重画：当前这句用新语言重新落字；若停在封面则重渲染封面 */
+  function onLangChange() {
+    if (typeEl && curZh != null) {
+      glyphize(typeEl, I.get(curZh));
+      typeEl.classList.add('done');
+      var who = $('who');
+      if (who) {
+        var nm = L('who.' + curSp);
+        who.textContent = nm || '';
+        who.classList.toggle('on', !!nm);
+      }
+    }
+    var st = $('stage');
+    if (st && st.querySelector('.cover:not(.end)') && !modalOpen) cover();
+    paintLang();
   }
 
   /* ---- 推进 ---- */
@@ -537,6 +629,8 @@ window.UA = window.UA || {};
     div.className = 'ln ' + b.s + (isKey ? ' key' : '');
 
     var sp = SPK[b.s] || SPK.n;
+    curSp = b.s;
+    curZh = b.t;
     var who = $('who');
     if (who) {
       var nm = L('who.' + b.s);
@@ -552,7 +646,7 @@ window.UA = window.UA || {};
     ambient();
 
     now.appendChild(div);
-    typeInto(div, b.t, b.s);
+    typeInto(div, I.get(b.t), b.s);
   }
 
   /* 一句话并非「打」出来的，是一个字一个字「落」下来的。
@@ -635,7 +729,7 @@ window.UA = window.UA || {};
     waiting = false; busy = false;
     var slot = $('slot');
     slot.innerHTML = '<div class="choices">' + list.map(function (o, i) {
-      return '<button class="cbtn" data-i="' + i + '"><span class="mark">' + '◆◇▲■△'[i % 5] + '</span>' + esc(o.t) + '</button>';
+      return '<button class="cbtn" data-i="' + i + '"><span class="mark">' + '◆◇▲■△'[i % 5] + '</span>' + esc(I.get(o.t)) + '</button>';
     }).join('') + '</div>';
     Array.prototype.forEach.call(slot.querySelectorAll('.cbtn'), function (b) {
       b.onclick = function (e) {
@@ -691,10 +785,10 @@ window.UA = window.UA || {};
     veil.style.opacity = '1';
     setTimeout(function () {
       c.innerHTML =
-        '<div class="cnum">' + esc(t.n || '') + '</div>' +
-        '<div class="ctitle">' + esc(t.t || '') + '</div>' +
-        '<div class="csub">' + esc(t.sub || '') + '</div>' +
-        (t.mood ? '<div class="cmood">' + esc(t.mood) + '</div>' : '');
+        '<div class="cnum">' + esc(I.get(t.n || '')) + '</div>' +
+        '<div class="ctitle">' + esc(I.get(t.t || '')) + '</div>' +
+        '<div class="csub">' + esc(I.get(t.sub || '')) + '</div>' +
+        (t.mood ? '<div class="cmood">' + esc(I.get(t.mood)) + '</div>' : '');
       c.classList.add('on');
       bell('hush');
       setTimeout(function () {
@@ -738,8 +832,8 @@ window.UA = window.UA || {};
       UA.field.setMotif(pick.shot, pick.jit || 0);
       doFx('bloom', { amp: 0.8, dur: 1.4 });
       c.innerHTML = '<div class="cnum">' + esc(L('app.ending')) + '</div>' +
-        '<div class="ctitle">' + esc(pick.name) + '</div>' +
-        '<div class="csub">' + esc(pick.sub) + '</div>';
+        '<div class="ctitle">' + esc(I.get(pick.name)) + '</div>' +
+        '<div class="csub">' + esc(I.get(pick.sub)) + '</div>';
       c.classList.add('on');
       bell('end');
       setTimeout(function () {
@@ -757,8 +851,8 @@ window.UA = window.UA || {};
     function row(k, v, n) { return '<div class="srow"><b>' + esc(k) + '</b><span>' + v + '</span><i>' + n + '</i></div>'; }
     $('stage').innerHTML =
       '<div class="cover end">' +
-      '<div class="cover-kicker">' + esc(pick.sub) + '</div>' +
-      '<h1 class="cover-title">' + esc(pick.name) + '</h1>' +
+      '<div class="cover-kicker">' + esc(I.get(pick.sub)) + '</div>' +
+      '<h1 class="cover-title">' + esc(I.get(pick.name)) + '</h1>' +
       '<div class="tally">' +
       row(L('app.anchor'), s.cai, '') +
       row(L('app.leak'), s.lou, '') +
@@ -776,12 +870,14 @@ window.UA = window.UA || {};
 
   function init() {
     UA.bus.load();
+    UA.i18n.init();
     setWorld(UA.bus.state.world || 'interval');
     document.body.classList.toggle('calm', !!UA.bus.state.prefs.calm);
     if (UA.bus.state.prefs.sound) UA.audio.setEnabled(true);
     bindGlobal();
     /* 第一次进门先过光敏这一道。看过之后不再拦。 */
     if (!UA.bus.state.prefs.warned) warning(); else cover();
+    paintLang();
     var c = $('btnCalm'), sn = $('btnSound'), sv = $('btnSave');
     if (c) { c.onclick = toggleCalm; c.classList.toggle('on', calm()); }
     if (sn) { sn.onclick = toggleSound; sn.classList.toggle('on', !!UA.bus.state.prefs.sound); }
@@ -800,6 +896,7 @@ window.UA = window.UA || {};
     setWorld: setWorld, paintType: paintType, paintGlitch: paintGlitch, glyphize: glyphize,
     exportSave: exportSave, openImport: openImport, setCue: function (t, v) { return UA.field.cue(t, v); },
     ending: ending, finale: finale, build: build, whisper: whisper,
+    onLangChange: onLangChange, paintLang: paintLang,
     get glitch() { return glitchAmt; },
     setGlitch: function (v) { glitchAmt = v; }
   };

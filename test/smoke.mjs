@@ -694,9 +694,91 @@ async function testPlain() {
   dom.window.close();
 }
 
+/* ============ 8. 多语本地化 ============ */
+async function testI18n() {
+  section('多语本地化');
+  const dom = await open();
+  const UA = dom.window.UA;
+  const doc = dom.window.document;
+
+  ok(!!UA.i18n, 'i18n 层已挂载');
+  ok(UA.i18n.LANGS.indexOf('zh') >= 0 && UA.i18n.LANGS.indexOf('en') >= 0 &&
+    UA.i18n.LANGS.indexOf('ja') >= 0 && UA.i18n.LANGS.indexOf('ru') >= 0, '四种语言在册（中/英/日/俄）');
+
+  const flow = UA.script.flow();
+  const endings = UA.script.endings();
+  const allZh = [];
+  flow.forEach((b) => {
+    if (b.s && b.t) allZh.push(b.t);
+    if (b.title) { allZh.push(b.title.t); allZh.push(b.title.sub); }
+    if (b.part) { allZh.push(b.part.t); allZh.push(b.part.sub); allZh.push(b.part.mood); }
+    if (b.chapter) { allZh.push(b.chapter.t); allZh.push(b.chapter.sub); allZh.push(b.chapter.mood); allZh.push(b.chapter.tail); }
+    if (b.choice) b.choice.forEach((o) => { allZh.push(o.t); (o.reply || []).forEach((r) => { if (r.t) allZh.push(r.t); }); });
+  });
+  endings.forEach((e) => { allZh.push(e.name); allZh.push(e.sub); e.lines.forEach((l) => { if (l.t) allZh.push(l.t); }); });
+  process.stdout.write('    故事文案唯一键 ' + allZh.length + ' 条\n');
+
+  for (const lang of ['en', 'ja', 'ru']) {
+    const m = UA.i18n.maps[lang];
+    ok(m && typeof m === 'object', lang + ' 译文表已注册');
+    const miss = allZh.filter((z) => m[z] == null || String(m[z]).trim() === '');
+    ok(miss.length === 0, lang + ' 覆盖全部故事文案（缺 ' + miss.length + '）' + (miss.length ? '：' + miss.slice(0, 5).join(' / ') : ''));
+  }
+
+  /* 旧设定泄漏词绝不能进译文 */
+  const LEAK2 = ['里视界', '里世界', '麦克', '操控者', 'glowith', 'glowithered',
+    'singular ghost', 'ODDEMON', 'oddemon', '元回响', '意识共同体', '刺球', '终极主义', '四值', '警戒性文字术'];
+  let leakHit = 0;
+  for (const lang of ['en', 'ja', 'ru']) {
+    const m = UA.i18n.maps[lang];
+    for (const k in m) { const v = String(m[k]); for (const w of LEAK2) if (v.indexOf(w) >= 0) leakHit++; }
+  }
+  ok(leakHit === 0, '译文里不出现旧设定泄漏词');
+
+  /* 界面译文表与中文键一致（who.n 故意为空，仅校验键存在） */
+  const tk = Object.keys(UA.lex.T);
+  for (const lang of ['en', 'ja', 'ru']) {
+    const M = UA.lex.M[lang];
+    const miss = tk.filter((k) => M[k] == null);
+    ok(miss.length === 0, '界面 ' + lang + ' 覆盖全部键（缺 ' + miss.length + '）' + (miss.length ? '：' + miss.join('/') : ''));
+  }
+
+  /* 切语言要真生效：渲染一句英文，文本应等于译文且不等于中文 */
+  UA.i18n.setLang('en');
+  ok(doc.documentElement.lang === 'en', 'html lang 切到 en');
+  UA.app.start(true);
+  let g = 0, shown = '', zh = '';
+  while (g++ < 3000) {
+    if (UA.app.busy) { await sleep(4); continue; }
+    const inp = doc.getElementById('w');
+    if (inp) { inp.value = '残留'; doc.getElementById('wok').click(); await sleep(4); continue; }
+    const cb = doc.querySelector('#slot .cbtn');
+    if (cb) { cb.click(); await sleep(4); continue; }
+    const ln = doc.querySelector('#now .ln.done');
+    if (ln && ln.textContent && ln.textContent.trim()) {
+      shown = ln.textContent.trim();
+      const b = flow[UA.bus.state.i];
+      zh = b && b.t;
+      if (zh) break;
+    }
+    await sleep(4);
+  }
+  ok(!!zh, '走到了一句正文');
+  ok(shown && shown !== zh, '英文渲染文本不等于中文原文');
+  ok(shown === UA.i18n.get(zh), '渲染文本等于 en 译文（' + JSON.stringify(shown) + '）');
+
+  /* 切回中文，文本应回到中文 */
+  UA.i18n.setLang('zh');
+  await sleep(30);
+  const zhShown = ((doc.querySelector('#now .ln.done') || {}).textContent || '').trim();
+  ok(zhShown === zh, '切回中文后文本回到中文');
+
+  dom.window.close();
+}
+
 /* ============ 跑 ============ */
 const only = process.argv[2] || 'all';
-const run = { core: testCore, script: testScript, save: testSave, flow: testFlow, render: testRender, tone: testTone, plain: testPlain, read: testRead };
+const run = { core: testCore, script: testScript, save: testSave, flow: testFlow, render: testRender, tone: testTone, plain: testPlain, read: testRead, i18n: testI18n };
 const jobs = only === 'all' ? Object.keys(run) : [only];
 
 process.stdout.write('\n残像 · 无头冒烟\n');
